@@ -1,9 +1,11 @@
+import os
+
 import pyaudio
 import wave
-import os
+import contextlib
+
 import random
 import threading
-import contextlib
 from time import time, sleep
 
 class ImaginaryLandscape:
@@ -18,12 +20,8 @@ class ImaginaryLandscape:
 	#creates an array of threads that will be use to play the sound files
 	def makeThreads(self):
 		self.threads = []
-		t1 = threading.Thread()
-		t2 = threading.Thread()
-		t3 = threading.Thread()
-		self.threads.append(t1)
-		self.threads.append(t2)
-		self.threads.append(t3)
+		for each in range (0,3):
+			self.threads.append(threading.Thread())
 
 	#place all the audio files in an array to be used later
 	def readInAudioFiles(self):
@@ -31,8 +29,8 @@ class ImaginaryLandscape:
 		count = 0
 		for entry in os.scandir(): 
 			if(".wav" in entry.name):
-   				self.audioFiles.append(entry)
-   				print(self.audioFiles[count].name)
+   				self.audioFiles.append(Music(entry))
+   				print(self.audioFiles[count].getName())
    				#print(os.path.realpath(self.audioFiles[count]))
    				count = count + 1
 
@@ -45,33 +43,24 @@ class ImaginaryLandscape:
 			args = (self.audioFiles[random.randrange(0, len(self.audioFiles) - 1, 1)].name,))
 		self.threads[threadNumber].start() 
 
-	def play(self, fileName):
+	def play(self, music):
 		chunk = 1024
-		f = wave.open(fileName, "rb")
+		openFile = wave.open(music.getName(), "rb")
 		p = pyaudio.PyAudio()
-		stream = p.open(format = p.get_format_from_width(f.getsampwidth()),
+		stream = p.open(format = p.get_format_from_width(openFile.getsampwidth()),
 					input_device_index = 4,  
-               		channels = f.getnchannels(),  
-                	rate = f.getframerate(),  
+               		channels = openFile.getnchannels(),  
+                	rate = openFile.getframerate(),  
                 	output = True)  
-		data = f.readframes(chunk)
-
-		#find length of audio file in seconds
-		frames = f.getnframes()
-		rate = f.getframerate()
-		duration = frames / float(rate)
-		print(duration)
-
-		start = random.randrange(0, int(duration), 1)
-		length = random.randrange(0, 60, 1)
+		data = openFile.readframes(chunk)
 
 		#skip unwanted frames
-		n_frames = int(start * f.getframerate())
-		f.setpos(n_frames)
+		n_frames = int(music.getStart() * openFile.getframerate())
+		openFile.setpos(n_frames)
 
 		# write desired frames to audio buffer
-		n_frames = int(length * f.getframerate())
-		frames = f.readframes(n_frames)
+		n_frames = int(music.getEnd * openFile.getframerate())
+		frames = openFile.readframes(n_frames)
 		stream.write(frames)
 
 		stream.close()
@@ -83,7 +72,7 @@ class ImaginaryLandscape:
 		while not self.done:
 			print("begin") 
 			i += 1
-			if i == 180:
+			if i == 10:
 				self.done = True
 
 			if ((self.threads[0].is_alive() is False) and (random.randrange(0, 2, 1) == 0)):
@@ -102,7 +91,32 @@ class ImaginaryLandscape:
 					args = (self.audioFiles[random.randrange(0, len(self.audioFiles) - 1, 1)].name,))
 				self.threads[2].start()
 
-			sleep(1) 
+			sleep(1)
+
+class Music:
+	def __init__(self, file):
+		self.sourceFile = file
+		self.name = file.name
+		self.openFile = wave.open(self.name, "rb")
+
+		self.length = self.getLength()
+
+		self.openFile.close()
+
+	#find and return length of audio file in seconds
+	def getLength(self):
+		return ((self.openFile.getnframes()) / (float(self.openFile.getframerate())))
+
+	#randomly choose where audio file will start 
+	def getStart(self):
+		return (random.randrange(0, int(self.length), 1))
+
+	#randomly choose how long audio while will play
+	def getEnd(self):
+		return random.randrange(0, 60, 1)
+
+	def getName(self):
+		return self.name
 
 il = ImaginaryLandscape()
 print("done")
