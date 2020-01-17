@@ -3,6 +3,7 @@ import wave
 import os
 import random
 import threading
+import contextlib
 from time import time, sleep
 
 class ImaginaryLandscape:
@@ -54,14 +55,28 @@ class ImaginaryLandscape:
                 	rate = f.getframerate(),  
                 	output = True)  
 		data = f.readframes(chunk)
-		i = 0
-		j = random.randrange(100, 1001, 1)
-		while data:
-			stream.write(data)
-			data = f.readframes(chunk)
-			i += 1
-			if i == j:
-				data = False
+
+		#find length of audio file in seconds
+		frames = f.getnframes()
+		rate = f.getframerate()
+		duration = frames / float(rate)
+		print(duration)
+
+		start = random.randrange(0, int(duration), 1)
+		length = random.randrange(0, 60, 1)
+
+		#skip unwanted frames
+		n_frames = int(start * f.getframerate())
+		f.setpos(n_frames)
+
+		# write desired frames to audio buffer
+		n_frames = int(length * f.getframerate())
+		frames = f.readframes(n_frames)
+		stream.write(frames)
+
+		stream.close()
+		p.terminate()
+		f.close()
 
 	def perform(self):
 		i = 0
