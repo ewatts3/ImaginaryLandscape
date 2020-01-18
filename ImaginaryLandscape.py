@@ -7,23 +7,24 @@ import contextlib
 from time import time, sleep
 
 class ImaginaryLandscape:
-	def __init__(self):
+	def __init__(self, numberOfTracks, divisionConstant):
 		self.startTime = time() #time will be used to make descisons at various points in the program
 		self.done = False #determines if program will stop after x-minutes
 
-		self.makeThreads()
+		self.makeThreads(numberOfTracks, divisionConstant)
 		self.readInAudioFiles()
-		self.perform()
+		#self.perform()
 
 	#creates an array of threads that will be use to play the sound files
-	def makeThreads(self):
-		self.threads = []
-		t1 = threading.Thread()
-		t2 = threading.Thread()
-		t3 = threading.Thread()
-		self.threads.append(t1)
-		self.threads.append(t2)
-		self.threads.append(t3)
+	def makeThreads(self, numberOfTracks, divisionConstant):
+		threadProbability = 100 / divisionConstant #threadProbability for first thread (see note below at divisionConstant decleration)
+		self.threads = [] #array of threadObjects that will be used
+		for each in range(0, numberOfTracks): #making one Thread object for each possible numberOfTracks that will play at one time
+			self.threads.append(Thread((threading.Thread()), (threadProbability)))
+			#First parameter for Thread() - a new thread
+			#Second parameter - the probability that the thread will play when it is checked, calculated on the next line
+			threadProbability = (self.threads[each].getProbability() / 2) #to be used for the next thread to be created
+		return
 
 	#place all the audio files in an array to be used later
 	def readInAudioFiles(self):
@@ -39,11 +40,6 @@ class ImaginaryLandscape:
 	def decideIfThreadShouldBeStarted(self, threadNumber):
 		if threadNumber == 0 and random.randrange(0, 2, 1) == 0 or threadNumber == 1 and random.randrange(0, 4, 1) == 0 or threadNumber == 2 and random.randrange(0, 9, 1) == 0:
 			self.startThread(threadNumber)
-
-	def startThread(self, threadNumber):
-		self.threads[threadNumber] = threading.Thread(target=self.play, 
-			args = (self.audioFiles[random.randrange(0, len(self.audioFiles) - 1, 1)].name,))
-		self.threads[threadNumber].start() 
 
 	def play(self, fileName):
 		chunk = 1024
@@ -104,5 +100,25 @@ class ImaginaryLandscape:
 
 			sleep(1) 
 
-il = ImaginaryLandscape()
+#The class "Thread" is used to hold not only the threads, as well as the probability that they will play that is associated with them
+class Thread:
+	def __init__(self, thread, probability):
+		self.thread = thread
+		self.probability = int(probability)
+		print(self.probability)
+
+	def getThread(self):
+		return self.thread
+
+	def getProbability(self):
+		return self.probability
+
+numberOfTracks = 3 #maximum number of tracks that can be playing at one time
+divisionConstant = 2 #constant by which each threads range of probability will be determined
+#put in README:
+#Ex: with 2, we start with 100, then divide it by 2, and get 50
+#for the next thread, we take that 50, and divide it by 2, and get 25
+#for the next thread, we take that 25, and divide it by 2, and get 12 (through integer division)
+#etc...
+il = ImaginaryLandscape(numberOfTracks, divisionConstant)
 print("done")
