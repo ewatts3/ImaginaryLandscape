@@ -13,7 +13,7 @@ class ImaginaryLandscape:
 
 		self.makeThreads(numberOfTracks, divisionConstant)
 		self.readInAudioFiles()
-		#self.perform()
+		self.perform()
 
 	#creates an array of threads that will be use to play the sound files
 	def makeThreads(self, numberOfTracks, divisionConstant):
@@ -37,9 +37,31 @@ class ImaginaryLandscape:
    				#print(os.path.realpath(self.audioFiles[count]))
    				count = count + 1
 
-	def decideIfThreadShouldBeStarted(self, threadNumber):
-		if threadNumber == 0 and random.randrange(0, 2, 1) == 0 or threadNumber == 1 and random.randrange(0, 4, 1) == 0 or threadNumber == 2 and random.randrange(0, 9, 1) == 0:
-			self.startThread(threadNumber)
+   	#determines if each thread will start are not
+   	#recusively calls subsequent threads
+   	#returns if thread does not start
+	def decideIfThreadShouldBeStarted(self, index):
+		#if the current index of threads it is checking is NOT playing, it will then choose a number to decide if it will start or not
+		#ex: if probabiilty is 50, the second statement will return "true" if a number between 0 and 49 is picked (a 50% chance)
+		#there are two "if" statements to account for the case where the thread is being checked is NOT playing and DOES NOT start
+		if ((self.threads[index].getThread().is_alive() is False) 
+			and (random.randrange(0, 100, 1) < self.threads[index].getProbability())):
+			#start thread
+			self.threads[index].setThread(
+				threading.Thread(target=self.play, 
+				args = (self.audioFiles[random.randrange(0, len(self.audioFiles) - 1, 1)].name,))
+				)
+			self.threads[index].getThread().start()
+			print('start' + str(index))
+			#begins to check next thread if current thread is not the last one
+			index += 1
+			if(index < len(self.threads)):
+				self.decideIfThreadShouldBeStarted(index)
+		elif (self.threads[index].getThread().is_alive() is True):
+			index += 1
+			if(index < len(self.threads)):
+				self.decideIfThreadShouldBeStarted(index)
+		return
 
 	def play(self, fileName):
 		chunk = 1024
@@ -56,10 +78,10 @@ class ImaginaryLandscape:
 		frames = f.getnframes()
 		rate = f.getframerate()
 		duration = frames / float(rate)
-		print(duration)
+		#print(duration)
 
 		start = random.randrange(0, int(duration), 1)
-		length = random.randrange(0, 60, 1)
+		length = random.randrange(0, 15, 1)
 
 		#skip unwanted frames
 		n_frames = int(start * f.getframerate())
@@ -73,30 +95,17 @@ class ImaginaryLandscape:
 		stream.close()
 		p.terminate()
 		f.close()
+		print("end")
+		return
 
 	def perform(self):
-		i = 0
 		while not self.done:
-			print("begin") 
-			i += 1
-			if i == 180:
-				self.done = True
+			print("begin")
 
-			if ((self.threads[0].is_alive() is False) and (random.randrange(0, 2, 1) == 0)):
-				print("here0")
-				self.threads[0] = threading.Thread(target=self.play, 
-					args = (self.audioFiles[random.randrange(0, len(self.audioFiles) - 1, 1)].name,))
-				self.threads[0].start() 
-			if ((self.threads[1].is_alive() is False) and (random.randrange(0, 4, 1) == 0)):
-				print("here1")
-				self.threads[1] = threading.Thread(target=self.play, 
-					args = (self.audioFiles[random.randrange(0, len(self.audioFiles) - 1, 1)].name,))
-				self.threads[1].start() 
-			if ((self.threads[2].is_alive() is False) and (random.randrange(0, 9, 1) == 0)):
-				print("here2")
-				self.threads[2] = threading.Thread(target=self.play, 
-					args = (self.audioFiles[random.randrange(0, len(self.audioFiles) - 1, 1)].name,))
-				self.threads[2].start()
+			self.decideIfThreadShouldBeStarted(0)
+
+			if (time() - self.startTime > 60):
+				self.done = True
 
 			sleep(1) 
 
@@ -112,6 +121,9 @@ class Thread:
 
 	def getProbability(self):
 		return self.probability
+
+	def setThread(self, threadStart):
+		self.thread = threadStart
 
 numberOfTracks = 3 #maximum number of tracks that can be playing at one time
 divisionConstant = 2 #constant by which each threads range of probability will be determined
