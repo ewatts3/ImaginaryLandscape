@@ -3,15 +3,15 @@ import wave
 import os
 import random
 import threading
-import contextlib
 from time import time, sleep
 
 class ImaginaryLandscape:
-	def __init__(self, numberOfTracks, divisionConstant):
+	def __init__(self, parameters):
+		self.parameters = parameters #parameters set by the user
 		self.startTime = time() #time will be used to make descisons at various points in the program
 		self.done = False #determines if program will stop after x-minutes
 
-		self.makeThreads(numberOfTracks, divisionConstant)
+		self.makeThreads(self.parameters.getNumberOfTracks(), self.parameters.getDivisionConstant())
 		self.readInAudioFiles()
 		self.perform()
 
@@ -53,7 +53,7 @@ class ImaginaryLandscape:
 				)
 			self.threads[index].getThread().start()
 			print('start' + str(index))
-			#begins to check next thread if current thread is not the last one
+			#begins to check next thread, if current thread is not the last one
 			index += 1
 			if(index < len(self.threads)):
 				self.decideIfThreadShouldBeStarted(index)
@@ -64,50 +64,80 @@ class ImaginaryLandscape:
 		return
 
 	def play(self, fileName):
-		chunk = 1024
-		f = wave.open(fileName, "rb")
-		p = pyaudio.PyAudio()
-		stream = p.open(format = p.get_format_from_width(f.getsampwidth()),
-					input_device_index = 4,  
-               		channels = f.getnchannels(),  
-                	rate = f.getframerate(),  
-                	output = True)  
-		data = f.readframes(chunk)
+		try:
+			chunk = 1024
+			f = wave.open(fileName, "rb")
+			p = pyaudio.PyAudio()
+			stream = p.open(format = p.get_format_from_width(f.getsampwidth()),
+						input_device_index = 4,  
+	               		channels = f.getnchannels(),  
+	                	rate = f.getframerate(),  
+	                	output = True)  
+			data = f.readframes(chunk)
 
-		#find length of audio file in seconds
-		frames = f.getnframes()
-		rate = f.getframerate()
-		duration = frames / float(rate)
-		#print(duration)
+			#find length of audio file in seconds
+			frames = f.getnframes()
+			rate = f.getframerate()
+			duration = frames / float(rate)
+			#print(duration)
 
-		start = random.randrange(0, int(duration), 1)
-		length = random.randrange(0, 15, 1)
+			start = random.randrange(0, int(duration), 1)
+			length = random.randrange(0, 15, 1)
 
-		#skip unwanted frames
-		n_frames = int(start * f.getframerate())
-		f.setpos(n_frames)
+			#skip unwanted frames
+			n_frames = int(start * f.getframerate())
+			f.setpos(n_frames)
 
-		# write desired frames to audio buffer
-		n_frames = int(length * f.getframerate())
-		frames = f.readframes(n_frames)
-		stream.write(frames)
+			# write desired frames to audio buffer
+			n_frames = int(length * f.getframerate())
+			frames = f.readframes(n_frames)
+			stream.write(frames)
 
-		stream.close()
-		p.terminate()
-		f.close()
-		print("end")
-		return
+			stream.close()
+			p.terminate()
+			f.close()
+			print("endTrack")
+			return
+		#I've been having an issue with sometimegetting an error 
+		#"OSError: [Errno -9996] Invalid output device (no default output device)"
+		#at line 75, so I've input this try/except so the program can continue
+		except:
+			print("Errno -9996")
+			return
 
 	def perform(self):
 		while not self.done:
-			print("begin")
+			print("beginLoop")
 
 			self.decideIfThreadShouldBeStarted(0)
 
-			if (time() - self.startTime > 60):
-				self.done = True
+			if (time() - self.startTime > self.parameters.getMinimumLength()):
+				if(time() - self.startTime > self.parameters.getMaximunLength()):
+					self.done = True
+				elif(random.randrange(0, 10, 1) == 0):
+					self.done = True
 
 			sleep(1) 
+
+#class of parameters set by the user
+class Parameters:
+	def __init__ (self, numberOfTracks, divisionConstant, minimunLength, maximumLength):
+		self.numberOfTracks = numberOfTracks
+		self.divisionConstant = divisionConstant
+		self.minimunLength = minimunLength
+		self.maximumLength = maximumLength
+
+	def getNumberOfTracks(self):
+		return self.numberOfTracks
+
+	def getDivisionConstant(self):
+		return self.divisionConstant
+
+	def getMinimumLength(self):
+		return self.minimunLength
+
+	def getMaximunLength(self):
+		return self.maximumLength
 
 #The class "Thread" is used to hold not only the threads, as well as the probability that they will play that is associated with them
 class Thread:
@@ -127,10 +157,14 @@ class Thread:
 
 numberOfTracks = 3 #maximum number of tracks that can be playing at one time
 divisionConstant = 2 #constant by which each threads range of probability will be determined
+minimunLength = (60 * 2) #minimum length of track
+maximumLength = (60 * 3) #maximum length of track
+timeBetweenChecks = 1 #time program sleeps between each iteration of thread check (STILL NEEDS IMPLEMENTED)
+parameters = Parameters(numberOfTracks, divisionConstant, minimunLength, maximumLength)
 #put in README:
 #Ex: with 2, we start with 100, then divide it by 2, and get 50
 #for the next thread, we take that 50, and divide it by 2, and get 25
 #for the next thread, we take that 25, and divide it by 2, and get 12 (through integer division)
 #etc...
-il = ImaginaryLandscape(numberOfTracks, divisionConstant)
+il = ImaginaryLandscape(parameters)
 print("done")
