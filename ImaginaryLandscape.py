@@ -12,17 +12,6 @@ class ImaginaryLandscape:
 		self.startTime = time() #time will be used to make descisons at various points in the program
 		self.done = False #determines if program will stop after x-minutes
 
-		#now = datetime.now()
-		self.outputFile = wave.open('outputFile.wav','w')
-		self.outputFile.setnchannels(1) # mono
-		self.outputFile.setsampwidth(2)
-		self.outputFile.setframerate(44100.0 * 2)
-		self.outputPyaudio = pyaudio.PyAudio()
-		#self.outputStream = self.outputPyaudio.open(format = wave,
-							#channels = 1,
-							#rate = 88200,
-							#output = True)
-
 		self.makeThreads(self.parameters.getNumberOfTracks(), self.parameters.getDivisionConstant())
 		self.readInAudioFiles()
 		self.perform()
@@ -68,15 +57,24 @@ class ImaginaryLandscape:
 			#begins to check next thread, if current thread is not the last one
 			index += 1
 			if(index < len(self.threads)):
+				self.sleep()
 				self.decideIfThreadShouldBeStarted(index)
 		elif (self.threads[index].getThread().is_alive() is True):
 			index += 1
 			if(index < len(self.threads)):
+				self.sleep()
 				self.decideIfThreadShouldBeStarted(index)
 		return
 
 	def selectRandomAudioFile(self):
 		return self.audioFiles[random.randrange(0, len(self.audioFiles) - 1, 1)].name
+
+	def sleep(self):
+		sleep(random.randrange(
+			self.parameters.getMinimumTimeBetweenChecks(),
+			self.parameters.getMaximumTimeBetweenChecks(), 
+			1)) 
+		return
 
 	def play(self, fileName):
 		try:
@@ -109,11 +107,6 @@ class ImaginaryLandscape:
 			frames = f.readframes(n_frames)
 			stream.write(frames)
 
-			#write stream to outpufile
-			newOutputThread = threading.Thread(target=writeToFile,
-				args = (frames,))
-			newOutputThread.start()
-
 			stream.close()
 			p.terminate()
 			f.close()
@@ -126,9 +119,6 @@ class ImaginaryLandscape:
 			print("Errno -9996")
 			return
 
-	def writeToFile(self, frames):
-		self.outputFile.writeframes(frames)
-
 	def perform(self):
 		while not self.done:
 			print("beginLoop")
@@ -137,22 +127,25 @@ class ImaginaryLandscape:
 
 			if (time() - self.startTime > self.parameters.getMinimumLengthOfPiece()):
 				if(time() - self.startTime > self.parameters.getMaximunLengthOfPiece()):
+					#kill all threads
 					self.done = True
 					return
 				elif(random.randrange(0, 10, 1) == 0):
 					self.done = True
 					return
 
-			sleep(parameters.getTimeBetweenChecks()) 
+			self.sleep()
 
 #class of parameters set by the user
 class Parameters:
-	def __init__ (self, numberOfTracks, divisionConstant, timeBetweenChecks, 
+	def __init__ (self, numberOfTracks, divisionConstant, 
+		minimumTimeBetweenChecks, maximumTimeBetweenChecks,
 		minimunLengthOfPiece, maximumLengthOfPiece,
 		minimumLengthOfSample, maximumLengthOfSample):
 		self.numberOfTracks = numberOfTracks
 		self.divisionConstant = divisionConstant
-		self.timeBetweenChecks = timeBetweenChecks
+		self.minimumTimeBetweenChecks = minimumTimeBetweenChecks
+		self.maximumTimeBetweenChecks = maximumTimeBetweenChecks
 		self.minimunLengthOfPiece = minimunLengthOfPiece
 		self.maximumLengthOfPiece = maximumLengthOfPiece
 		self.minimumLengthOfSample = minimumLengthOfSample
@@ -164,8 +157,11 @@ class Parameters:
 	def getDivisionConstant(self):
 		return self.divisionConstant
 
-	def getTimeBetweenChecks(self):
-		return self.timeBetweenChecks
+	def getMinimumTimeBetweenChecks(self):
+		return self.minimumTimeBetweenChecks
+
+	def getMaximumTimeBetweenChecks(self):
+		return self.maximumTimeBetweenChecks
 
 	def getMinimumLengthOfPiece(self):
 		return self.minimunLengthOfPiece
@@ -195,25 +191,36 @@ class Thread:
 	def setThread(self, threadStart):
 		self.thread = threadStart
 
-numberOfTracks = 3 #maximum number of tracks that can be playing at one time
-divisionConstant = 2 #constant by which each threads range of probability will be determined
-timeBetweenChecks = 1 #time program sleeps between each iteration of thread check
-minimunLengthOfPiece = (60 * .25) #minimum length of track
-maximumLengthOfPiece = (60 * .25) #maximum length of track
-minimumLengthOfSample = 0
-maximumLengthOfSample = 15
-parameters = Parameters(
-	numberOfTracks, 
-	divisionConstant, 
-	timeBetweenChecks,
-	minimunLengthOfPiece, 
-	maximumLengthOfPiece,
-	minimumLengthOfSample,
-	maximumLengthOfSample)
+#maximum number of tracks that can be playing at one time
+numberOfTracks = 3
+
+#constant by which each threads range of probability will be determined
+divisionConstant = 2
 #put in README:
 #Ex: with 2, we start with 100, then divide it by 2, and get 50
 #for the next thread, we take that 50, and divide it by 2, and get 25
 #for the next thread, we take that 25, and divide it by 2, and get 12 (through integer division)
 #etc...
+
+#time between each check for if the program should play a thread or not
+minimumTimeBetweenChecks = 1
+maximumTimeBetweenChecks = 5
+#length of the the whole performance
+minimunLengthOfPiece = 60 * (1)
+maximumLengthOfPiece = 60 * (1)
+#range of length for each individual sample
+minimumLengthOfSample = 0
+maximumLengthOfSample = 15
+
+parameters = Parameters(
+	numberOfTracks, 
+	divisionConstant, 
+	minimumTimeBetweenChecks,
+	maximumTimeBetweenChecks,
+	minimunLengthOfPiece, 
+	maximumLengthOfPiece,
+	minimumLengthOfSample,
+	maximumLengthOfSample)
+
 il = ImaginaryLandscape(parameters)
 print("done")
