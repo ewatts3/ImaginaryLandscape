@@ -1,6 +1,8 @@
 import pyaudio
+from pydub import AudioSegment
 import wave
 import os
+import shutil
 import random
 import threading
 from time import time, sleep
@@ -9,13 +11,37 @@ from datetime import datetime
 class ImaginaryLandscape:
 	def __init__(self, parameters):
 		self.parameters = parameters #parameters set by the user
-		self.startTime = time() #time will be used to make descisons at various points in the program
-		self.done = False #determines if program will stop after x-minutes
-		self.m = Music() #public class to do operations relating to playing samples
 
-		self.makeThreads(self.parameters.getNumberOfTracks(), self.parameters.getDivisionConstant())
 		self.readInAudioFiles()
+		self.makeThreads(self.parameters.getNumberOfTracks(), self.parameters.getDivisionConstant())
 		self.perform()
+
+	#place all the audio files in an array to be used later
+	def readInAudioFiles(self):
+		#outputDirectory = self.getOutputDirectory()
+		#os.makedirs(outputDirectory)
+		#os.chdir(outputDirectory)
+		self.audioFiles = []
+		count = 0
+		#for entry in os.scandir(self.parameters.getDirectoryForFiles()): 
+		#	if(".wav" in entry.name):
+		#		print("copying...")
+		#		shutil.copy2(os.path.realpath(entry), outputDirectory)
+		#	if(".mp3" in entry.name):
+		#		print("converting...")                                          
+		#		sound = AudioSegment.from_mp3(os.path.realpath(entry))
+		#		sound.export((entry.name[:-4] + ".wav"), format="wav")
+		for entry in os.scandir(self.parameters.getDirectoryForFiles()): 
+			if(".wav" in entry.name):
+   				self.audioFiles.append(entry)
+   				print(self.audioFiles[count].name)
+   				count = count + 1
+
+	def getOutputDirectory(self):
+		now = datetime.now()
+		now.strftime("%d-%m-%Y %H.%M.%S")
+		cwd = os.getcwd
+		return str(cwd + "\\" + datetime)
 
 	#creates an array of threads that will be use to play the sound files
 	def makeThreads(self, numberOfTracks, divisionConstant):
@@ -28,29 +54,21 @@ class ImaginaryLandscape:
 			threadProbability = (self.threads[each].getProbability() / 2) #to be used for the next thread to be created
 		return
 
-	#place all the audio files in an array to be used later
-	def readInAudioFiles(self):
-		self.audioFiles = []
-		count = 0
-		for entry in os.scandir(): 
-			if(".wav" in entry.name):
-   				self.audioFiles.append(entry)
-   				print(self.audioFiles[count].name)
-   				count = count + 1
-
-   	def perform(self):
-		while not self.done:
-			print("beginLoop")
-
-			self.decideIfThreadShouldBeStarted(0)
-			self.sleep()
-			self.done = self.decideIfPieceShouldEnd()
+	def perform(self):
+		startTime = time() #time will be used to decide when the piece will end
+		done = False #determines if program will stop
+		m = Music() #public class to do operations relating to playing samples
+		while not done:
+   			print("beginLoop")
+   			self.decideIfThreadShouldBeStarted(0, m)
+   			#self.sleep()
+   			done = self.decideIfPieceShouldEnd(startTime)
 		return
 
    	#determines if each thread will start are not
    	#recusively calls subsequent threads
    	#returns if thread does not start
-	def decideIfThreadShouldBeStarted(self, index):
+	def decideIfThreadShouldBeStarted(self, index, m):
 		#if the current index of threads it is checking is NOT playing, it will then choose a number to decide if it will start or not
 		#ex: if probabiilty is 50, the second statement will return "true" if a number between 0 and 49 is picked (a 50% chance)
 		#there are two "if" statements to account for the case where the thread is being checked is NOT playing and DOES NOT start
@@ -58,7 +76,7 @@ class ImaginaryLandscape:
 			and (random.randrange(0, 100, 1) < self.threads[index].getProbability()) ):
 			#start thread
 			self.threads[index].setThread(
-				threading.Thread(target=self.m.play, 
+				threading.Thread(target=m.play, 
 				args = (self.selectRandomAudioFile(),
 					self.parameters.getMinimumLengthOfSample(),
 					self.parameters.getMaximumLengthOfSample(),))
@@ -69,12 +87,14 @@ class ImaginaryLandscape:
 			index += 1
 			if(index < len(self.threads)):
 				self.sleep()
-				self.decideIfThreadShouldBeStarted(index)
+				self.decideIfThreadShouldBeStarted(index, m)
 		elif (self.threads[index].getThread().is_alive() is True):
 			index += 1
 			if(index < len(self.threads)):
 				self.sleep()
-				self.decideIfThreadShouldBeStarted(index)
+				self.decideIfThreadShouldBeStarted(index, m)
+		if index == 0:
+			self.sleep()
 		return
 
 	def selectRandomAudioFile(self):
@@ -87,24 +107,24 @@ class ImaginaryLandscape:
 			1)) 
 		return
 
-	def decideIfPieceShouldEnd(self):
-		if (time() - self.startTime > self.parameters.getMinimumLengthOfPiece()):
-			if(time() - self.startTime > self.parameters.getMaximunLengthOfPiece()):
+	def decideIfPieceShouldEnd(self, startTime):
+		if (time() - startTime > self.parameters.getMinimumLengthOfPiece()):
+			if(time() - startTime > self.parameters.getMaximunLengthOfPiece()):
 				#implement kill all threads
-				self.done = True
 				return True
 			elif(random.randrange(0, 10, 1) == 0):
-				self.done = True
 				return True
 
 		return False
 
 #class of parameters set by the user
 class Parameters:
-	def __init__ (self, numberOfTracks, divisionConstant, 
+	def __init__ (self, directoryForFiles,
+		numberOfTracks, divisionConstant, 
 		minimumTimeBetweenChecks, maximumTimeBetweenChecks,
 		minimunLengthOfPiece, maximumLengthOfPiece,
 		minimumLengthOfSample, maximumLengthOfSample):
+		self.directoryForFiles= directoryForFiles
 		self.numberOfTracks = numberOfTracks
 		self.divisionConstant = divisionConstant
 		self.minimumTimeBetweenChecks = minimumTimeBetweenChecks
@@ -113,6 +133,13 @@ class Parameters:
 		self.maximumLengthOfPiece = maximumLengthOfPiece
 		self.minimumLengthOfSample = minimumLengthOfSample
 		self.maximumLengthOfSample = maximumLengthOfSample
+
+	def setDirectoryForFiles(self, input):
+		self.directoryForFiles = input
+		return
+
+	def getDirectoryForFiles(self):
+		return self.directoryForFiles
 
 	def setNumberOfTracks(self, input):
 		self.numberOfTracks = input
@@ -177,20 +204,20 @@ class Thread:
 		self.probability = int(probability)
 		#print(self.probability)
 
+	def setThread(self, threadStart):
+		self.thread = threadStart
+
 	def getThread(self):
 		return self.thread
 
 	def getProbability(self):
 		return self.probability
 
-	def setThread(self, threadStart):
-		self.thread = threadStart
-
-#public class to do all the operations relating to playing the file
+#class to do all the operations relating to playing the file
 class Music:
 	#performs all necessary operations to play a file
 	def play(self, musicFile, min, max):
-		file = wave.open(musicFile.name, "rb")
+		file = wave.open(os.path.realpath(musicFile), "rb")
 		p = pyaudio.PyAudio()
 		stream = self.openStream(p, file)
 
@@ -199,11 +226,8 @@ class Music:
 		length = self.decideLength(min, max)
 		file.setpos(self.setPosition(start, file))
 		stream.write(self.getFramesToWrite(length, file))
+		self.finish(stream, p, file)
 
-		stream.close()
-		p.terminate()
-		file.close()
-		print("endTrack")
 		return
 
 	#open audio output stream
@@ -234,6 +258,15 @@ class Music:
 	def getFramesToWrite(self, length, file):
 		return file.readframes(int(length * file.getframerate()))
 
+	def finish(self, s, p, f):
+		s.close()
+		p.terminate()
+		f.close()
+		print("endTrack")
+		return
+
+directoryForFiles = r"C:\Users\ericw\Documents\Python\audioFiles\Daft Punk"
+
 #maximum number of tracks that can be playing at one time
 numberOfTracks = 3
 
@@ -249,13 +282,14 @@ divisionConstant = 2
 minimumTimeBetweenChecks = 1
 maximumTimeBetweenChecks = 2
 #length of the the whole performance in seconds
-minimunLengthOfPiece = 60 * (1)
-maximumLengthOfPiece = 60 * (1)
+minimunLengthOfPiece = 60 * (.25)
+maximumLengthOfPiece = 60 * (.25)
 #range of length for each individual sample in seconds
 minimumLengthOfSample = 0
 maximumLengthOfSample = 15
 
 parameters = Parameters(
+	directoryForFiles,
 	numberOfTracks, 
 	divisionConstant, 
 	minimumTimeBetweenChecks,
