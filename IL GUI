@@ -1,0 +1,130 @@
+from tkinter import *
+from tkinter import ttk
+from tkinter import filedialog
+
+import ctypes
+
+class UI:
+	def __init__(self):
+		self.createMainWindow()
+		self.createTabs()
+		self.mainWindow.mainloop()
+		return
+
+	def createMainWindow(self):
+		self.mainWindow = Tk()
+		self.mainWindow.title("Imaginary Landscape")
+		self.mainWindow.iconbitmap(r'C:\Users\ericw\Documents\Python\ImgainaryLandscape\ILicon.ico')
+		self.mainWindow.geometry('500x500')
+		return
+
+	def createTabs(self):
+		self.font = "Falling Sky"
+		self.tab_control = ttk.Notebook(self.mainWindow)
+		self.createPerformTab()
+		self.createInformationTab()
+		return
+
+	def createPerformTab(self):
+		self.performTab = ttk.Frame(self.tab_control)
+		self.tab_control.add(self.performTab, text='Perform')
+		self.tab_control.pack(expand=1, fill="both")
+		self.createAllFramesForPerformTab()
+		return
+
+	def createInformationTab(self):
+		self.informationTab = ttk.Frame(self.tab_control)
+		self.tab_control.add(self.informationTab, text='Information')
+		self.tab_control.pack(expand=1, fill="both")
+		return
+
+	def createAllFramesForPerformTab(self):
+		self.createSelectTracksFrame()
+		self.createLengthOfPieceFrame()
+		self.createLengthOfSampleFrame()
+		self.createTimeBetweenChecksFrame()
+		self.createFileDirectoryFrame()
+		return
+
+	def createSelectTracksFrame(self):
+		tracksLabelFrame = LabelFrame(self.performTab, text="Number of Tracks", font=(self.font, 10), bd=8)
+		spin = Spinbox(tracksLabelFrame, from_=0, to=1000, width=5)
+
+		tracksLabelFrame.pack(fill="both", expand="no")
+		spin.pack()
+		return
+
+	def createLengthOfPieceFrame(self):
+		lengthOfPieceFrame = LabelFrame(self.performTab, text="Length of Piece", font=(self.font, 10), bd=8)
+
+		minimumFrame = LabelFrame(lengthOfPieceFrame, text="Minimum", font=(self.font, 10))
+		minimumMinutesText = Label(minimumFrame, text="Minutes", font=(self.font, 10))
+		minimumMinutesSpinbox = Spinbox(minimumFrame, from_=0, to=1000)
+		minimumSecondsText = Label(minimumFrame, text="Seconds", font=(self.font, 10))
+		minimumSecondsSpinbox = Spinbox(minimumFrame, from_=0, to=1000)
+
+		maximumFrame = LabelFrame(lengthOfPieceFrame, text="Maximum", font=(self.font, 10))
+		maximumMinutesText = Label(maximumFrame, text="Minutes", font=(self.font, 10))
+		maximumMinutesSpinbox = Spinbox(maximumFrame, from_=0, to=1000)
+		maximumSecondsText = Label(maximumFrame, text="Seconds", font=(self.font, 10))
+		maximumSecondsSpinbox = Spinbox(maximumFrame, from_=0, to=1000)
+
+		lengthOfPieceFrame.pack(fill="both", expand="no")
+
+		minimumFrame.pack(fill="both", expand="no")
+		minimumMinutesText.pack(side = LEFT)
+		minimumMinutesSpinbox.pack(side = LEFT)
+		minimumSecondsText.pack(side = LEFT)
+		minimumSecondsSpinbox.pack(side = LEFT)
+
+		maximumFrame.pack(fill="both", expand="no")
+		maximumMinutesText.pack(side = LEFT)
+		maximumMinutesSpinbox.pack(side = LEFT)
+		maximumSecondsText.pack(side = LEFT)
+		maximumSecondsSpinbox.pack(side = LEFT)
+		return
+
+	def createLengthOfSampleFrame(self):
+		lengthOfSampleFrame = LabelFrame(self.performTab, text="Length of Sample", font=(self.font, 10), bd=8)
+		minimumText = Label(lengthOfSampleFrame, text="Minimum", font=(self.font, 10))
+		minimumSpinbox = Spinbox(lengthOfSampleFrame, from_=0, to=1000)
+		maximumText = Label(lengthOfSampleFrame, text="Maximum", font=(self.font, 10))
+		maximumSpinbox = Spinbox(lengthOfSampleFrame, from_=0, to=1000)
+
+		lengthOfSampleFrame.pack(fill="both", expand="no")
+		minimumText.pack(side = LEFT)
+		minimumSpinbox.pack(side = LEFT)
+		maximumText.pack(side = LEFT)
+		maximumSpinbox.pack(side = LEFT)
+		return
+
+	def createTimeBetweenChecksFrame(self):
+		timeBetweenChecksFrame = LabelFrame(self.performTab, text="Time Between Checks", font=(self.font, 10), bd=8)
+		minimumText = Label(timeBetweenChecksFrame, text="Minimum", font=(self.font, 10))
+		minimumSpinbox = Spinbox(timeBetweenChecksFrame, from_=0, to=1000)
+		maximumText = Label(timeBetweenChecksFrame, text="Maximum", font=(self.font, 10),)
+		maximumSpinbox = Spinbox(timeBetweenChecksFrame, from_=0, to=1000)
+
+		timeBetweenChecksFrame.pack(fill="both", expand="no")
+		minimumText.pack(side = LEFT)
+		minimumSpinbox.pack(side = LEFT)
+		maximumText.pack(side = LEFT)
+		maximumSpinbox.pack(side = LEFT)
+		return
+
+	def openFileDirectory(self):
+		self.directoryChosen = filedialog.askdirectory()
+		print(self.directoryChosen)
+		return
+
+	def createFileDirectoryFrame(self):
+		fileDirectoryFrame = LabelFrame(self.performTab, text="Choose Directory for Files", font=(self.font, 10), bd=8)
+		openFileExplorerButton = Button(fileDirectoryFrame, text="Choose...", font=(self.font, 10),
+			bg="black", fg="white", command=self.openFileDirectory)
+		filePathTextBox = Entry(fileDirectoryFrame, width=65)
+		fileDirectoryFrame.pack(fill="both", expand="no")
+		openFileExplorerButton.pack(side = LEFT)
+		filePathTextBox.pack(side = LEFT)
+		return
+
+ui = UI()
