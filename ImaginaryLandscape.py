@@ -7,6 +7,9 @@ import random
 import threading
 from time import time, sleep
 from datetime import datetime
+from tkinter import *
+from tkinter import ttk
+from tkinter import filedialog
 
 class ImaginaryLandscape:
 	def __init__(self, parameters):
@@ -15,33 +18,13 @@ class ImaginaryLandscape:
 		self.readInAudioFiles()
 		self.makeThreads(self.parameters.getNumberOfTracks(), self.parameters.getDivisionConstant())
 		self.perform()
+		print('done')
 
 	#place all the audio files in an array to be used later
 	def readInAudioFiles(self):
-		#outputDirectory = self.getOutputDirectory()
-		#os.makedirs(outputDirectory)
-		#os.chdir(outputDirectory)
-		self.audioFiles = []
-		count = 0
-		#for entry in os.scandir(self.parameters.getDirectoryForFiles()): 
-		#	if(".wav" in entry.name):
-		#		print("copying...")
-		#		shutil.copy2(os.path.realpath(entry), outputDirectory)
-		#	if(".mp3" in entry.name):
-		#		print("converting...")                                          
-		#		sound = AudioSegment.from_mp3(os.path.realpath(entry))
-		#		sound.export((entry.name[:-4] + ".wav"), format="wav")
-		for entry in os.scandir(self.parameters.getDirectoryForFiles()): 
-			if(".wav" in entry.name):
-   				self.audioFiles.append(entry)
-   				print(self.audioFiles[count].name)
-   				count = count + 1
-
-	def getOutputDirectory(self):
-		now = datetime.now()
-		now.strftime("%d-%m-%Y %H.%M.%S")
-		cwd = os.getcwd
-		return str(cwd + "\\" + datetime)
+		riaf = readInAudioFiles()
+		self.audioFiles = riaf.getArrayOfAudioFiles(self.parameters.getDirectoryForFiles())
+		return
 
 	#creates an array of threads that will be use to play the sound files
 	def makeThreads(self, numberOfTracks, divisionConstant):
@@ -119,20 +102,23 @@ class ImaginaryLandscape:
 
 #class of parameters set by the user
 class Parameters:
-	def __init__ (self, directoryForFiles,
-		numberOfTracks, divisionConstant, 
-		minimumTimeBetweenChecks, maximumTimeBetweenChecks,
-		minimunLengthOfPiece, maximumLengthOfPiece,
-		minimumLengthOfSample, maximumLengthOfSample):
-		self.directoryForFiles= directoryForFiles
-		self.numberOfTracks = numberOfTracks
-		self.divisionConstant = divisionConstant
-		self.minimumTimeBetweenChecks = minimumTimeBetweenChecks
-		self.maximumTimeBetweenChecks = maximumTimeBetweenChecks
-		self.minimunLengthOfPiece = minimunLengthOfPiece
-		self.maximumLengthOfPiece = maximumLengthOfPiece
-		self.minimumLengthOfSample = minimumLengthOfSample
-		self.maximumLengthOfSample = maximumLengthOfSample
+	#def __init__ (self, directoryForFiles,
+	#	numberOfTracks, divisionConstant, 
+	#	minimumTimeBetweenChecks, maximumTimeBetweenChecks,
+	#	minimunLengthOfPiece, maximumLengthOfPiece,
+	#	minimumLengthOfSample, maximumLengthOfSample):
+	#	self.directoryForFiles= directoryForFiles
+	#	self.numberOfTracks = numberOfTracks
+	#	self.divisionConstant = divisionConstant
+	#	self.minimumTimeBetweenChecks = minimumTimeBetweenChecks
+	#	self.maximumTimeBetweenChecks = maximumTimeBetweenChecks
+	#	self.minimunLengthOfPiece = minimunLengthOfPiece
+	#	self.maximumLengthOfPiece = maximumLengthOfPiece
+	#	self.minimumLengthOfSample = minimumLengthOfSample
+	#	self.maximumLengthOfSample = maximumLengthOfSample
+
+	def __init__(self):
+		return
 
 	def setDirectoryForFiles(self, input):
 		self.directoryForFiles = input
@@ -190,14 +176,96 @@ class Parameters:
 	def getMinimumLengthOfSample(self):
 		return self.minimumLengthOfSample
 
-	def getMaximumLengthOfSample(self, input):
+	def setMaximumLengthOfSample(self, input):
 		self.maximumLengthOfSample = input
 		return
 
 	def getMaximumLengthOfSample(self):
 		return self.maximumLengthOfSample
 
-#The class "Thread" is used to hold not only the threads, but the probability that they will play that is associated with them as well
+class readInAudioFiles:
+	def getArrayOfAudioFiles(self, directoryGivenByUser):
+		self.cwd = os.getcwd()
+
+		needsConverting = self.checkIfNeedsConverting(directoryGivenByUser)
+		performingDirectory = self.getPerformingDirectory(needsConverting, 
+			directoryGivenByUser)
+		audioFiles = self.putAudioFilesInArray(performingDirectory)
+		return audioFiles 
+
+	def checkIfNeedsConverting(self, directoryGivenByUser):
+		convert = False
+		self.numberOfFiles = 0
+		for entry in os.scandir(directoryGivenByUser):
+			if(".mp3" in entry.name):
+				convert = True
+			self.numberOfFiles += 1
+		return convert
+
+	def getPerformingDirectory(self, needsConverting, directoryGivenByUser):
+		if needsConverting is True:
+			performingDirectory = self.convertAndCopyFiles(directoryGivenByUser)
+		elif needsConverting is False:
+			performingDirectory = directoryGivenByUser
+		return performingDirectory
+
+	def convertAndCopyFiles(self, directoryGivenByUser):
+		outputDirectory = self.createOutputDirectory()
+		os.makedirs(outputDirectory)
+		os.chdir(outputDirectory)
+
+		threads = self.createThreads()
+		index = 0
+
+		for entry in os.scandir(directoryGivenByUser):
+			print(index) 
+			if(".wav" in entry.name):
+				threads[index] = threading.Thread(target=self.copyFile, args=(entry,outputDirectory,))
+			elif(".mp3" in entry.name):
+				#threads[index] = threading.Thread(target=self.convertFile, args=(entry,))
+				print("converting...")
+				sound = AudioSegment.from_mp3(os.path.realpath(entry))
+				sound.export((entry.name[:-4] + ".wav"), format="wav")
+			threads[index].start()
+			index += 1
+		return outputDirectory
+
+	def createOutputDirectory(self):
+		now = datetime.now()
+		folderName = now.strftime("%d-%m-%Y %H.%M.%S")
+		return self.cwd + "\\" + folderName
+
+	def createThreads(self):
+		array = []
+		for each in range(0, self.numberOfFiles):
+			thread = threading.Thread()
+			array.append(thread)
+		return array
+
+	def copyFile(self, file, outputDirectory):
+		print("copying...")
+		shutil.copy2(os.path.realpath(file), outputDirectory)
+		return
+
+	def convertFile(self, file):
+		print("converting...")
+		sound = AudioSegment.from_mp3(os.path.realpath(file))
+		sound.export((file.name[:-4] + ".wav"), format="wav")
+		return
+
+	def putAudioFilesInArray(self, performingDirectory):
+		os.chdir(self.cwd)
+		array = []
+		count = 0
+		for entry in os.scandir(performingDirectory): 
+			if(".wav" in entry.name):
+   				array.append(entry)
+   				print(array[count].name)
+   				count = count + 1
+		return array
+
+#the class "Thread" is used to hold not only the threads, 
+#but the probability that they will play that is associated with them as well
 class Thread:
 	def __init__(self, thread, probability):
 		self.thread = thread
@@ -246,7 +314,7 @@ class Music:
 	def decideStart(self, duration):
 		return random.randrange(0, duration, 1)
 
-	#decide total length of sample
+	#decide total length of sample to be played
 	def decideLength(self, min, max):
 		return random.randrange(min, max, 1)
 
@@ -265,39 +333,177 @@ class Music:
 		print("endTrack")
 		return
 
-directoryForFiles = r"C:\Users\ericw\Documents\Python\audioFiles\Daft Punk"
+#####################################################################
 
-#maximum number of tracks that can be playing at one time
-numberOfTracks = 3
+class UI:
+	def __init__(self):
+		self.createMainWindow()
+		self.createTabs()
+		self.mainWindow.mainloop()
+		return
 
-#constant by which each threads range of probability will be determined
-divisionConstant = 2
-#put in README:
+	def createMainWindow(self):
+		self.mainWindow = Tk()
+		self.mainWindow.title("Imaginary Landscape")
+		self.mainWindow.iconbitmap(r'C:\Users\ericw\Documents\Python\ImgainaryLandscape\assests\ILicon.ico')
+		self.mainWindow.geometry('500x500')
+		return
+
+	def createTabs(self):
+		self.font = "Falling Sky"
+		self.tab_control = ttk.Notebook(self.mainWindow)
+		self.createPerformTab()
+		self.createInformationTab()
+		return
+
+	def createPerformTab(self):
+		self.performTab = ttk.Frame(self.tab_control)
+		self.tab_control.add(self.performTab, text='Perform')
+		self.tab_control.pack(expand=1, fill="both")
+		self.createAllFramesForPerformTab()
+		return
+
+	def createInformationTab(self):
+		self.informationTab = ttk.Frame(self.tab_control)
+		self.tab_control.add(self.informationTab, text='Information')
+		self.tab_control.pack(expand=1, fill="both")
+		return
+
+	def createAllFramesForPerformTab(self):
+		self.createNumberOfTracksFrame()
+		self.createLengthOfPieceFrame()
+		self.createLengthOfSampleFrame()
+		self.createTimeBetweenChecksFrame()
+		self.createFileDirectoryFrame()
+		self.createPerformButton()
+		return
+
+	def createNumberOfTracksFrame(self):
+		numberOfTracksLabelFrame = LabelFrame(self.performTab, text="Number of Tracks", font=(self.font, 10), bd=8)
+		self.numberOfTracksSpinbox = Spinbox(numberOfTracksLabelFrame, from_=0, to=1000, width=5)
+
+		numberOfTracksLabelFrame.pack(fill="both", expand="no")
+		self.numberOfTracksSpinbox.pack()
+		return
+
+	def createLengthOfPieceFrame(self):
+		lengthOfPieceFrame = LabelFrame(self.performTab, text="Length of Piece", font=(self.font, 10), bd=8)
+
+		minimumFrame = LabelFrame(lengthOfPieceFrame, text="Minimum", font=(self.font, 10))
+		minimumMinutesText = Label(minimumFrame, text="Minutes", font=(self.font, 10))
+		self.minimumMinutesSpinbox = Spinbox(minimumFrame, from_=0, to=1000)
+		minimumSecondsText = Label(minimumFrame, text="Seconds", font=(self.font, 10))
+		self.minimumSecondsSpinbox = Spinbox(minimumFrame, from_=0, to=1000)
+
+		maximumFrame = LabelFrame(lengthOfPieceFrame, text="Maximum", font=(self.font, 10))
+		maximumMinutesText = Label(maximumFrame, text="Minutes", font=(self.font, 10))
+		self.maximumMinutesSpinbox = Spinbox(maximumFrame, from_=0, to=1000)
+		maximumSecondsText = Label(maximumFrame, text="Seconds", font=(self.font, 10))
+		self.maximumSecondsSpinbox = Spinbox(maximumFrame, from_=0, to=1000)
+
+		lengthOfPieceFrame.pack(fill="both", expand="no")
+
+		minimumFrame.pack(fill="both", expand="no")
+		minimumMinutesText.pack(side = LEFT)
+		self.minimumMinutesSpinbox.pack(side = LEFT)
+		minimumSecondsText.pack(side = LEFT)
+		self.minimumSecondsSpinbox.pack(side = LEFT)
+
+		maximumFrame.pack(fill="both", expand="no")
+		maximumMinutesText.pack(side = LEFT)
+		self.maximumMinutesSpinbox.pack(side = LEFT)
+		maximumSecondsText.pack(side = LEFT)
+		self.maximumSecondsSpinbox.pack(side = LEFT)
+		return
+
+	def createLengthOfSampleFrame(self):
+		lengthOfSampleFrame = LabelFrame(self.performTab, text="Length of Sample", font=(self.font, 10), bd=8)
+		minimumText = Label(lengthOfSampleFrame, text="Minimum", font=(self.font, 10))
+		self.minimumLengthOfSampleSpinbox = Spinbox(lengthOfSampleFrame, from_=0, to=1000)
+		maximumText = Label(lengthOfSampleFrame, text="Maximum", font=(self.font, 10))
+		self.maximumLengthOfSampleSpinbox = Spinbox(lengthOfSampleFrame, from_=0, to=1000)
+
+		lengthOfSampleFrame.pack(fill="both", expand="no")
+		minimumText.pack(side = LEFT)
+		self.minimumLengthOfSampleSpinbox.pack(side = LEFT)
+		maximumText.pack(side = LEFT)
+		self.maximumLengthOfSampleSpinbox.pack(side = LEFT)
+		return
+
+	def createTimeBetweenChecksFrame(self):
+		timeBetweenChecksFrame = LabelFrame(self.performTab, text="Time Between Checks", font=(self.font, 10), bd=8)
+		minimumText = Label(timeBetweenChecksFrame, text="Minimum", font=(self.font, 10))
+		self.minimumTimeBetweenChecksSpinbox = Spinbox(timeBetweenChecksFrame, from_=0, to=1000)
+		maximumText = Label(timeBetweenChecksFrame, text="Maximum", font=(self.font, 10),)
+		self.maximumTimeBetweenChecksSpinbox = Spinbox(timeBetweenChecksFrame, from_=0, to=1000)
+
+		timeBetweenChecksFrame.pack(fill="both", expand="no")
+		minimumText.pack(side = LEFT)
+		self.minimumTimeBetweenChecksSpinbox.pack(side = LEFT)
+		maximumText.pack(side = LEFT)
+		self.maximumTimeBetweenChecksSpinbox.pack(side = LEFT)
+		return
+
+	def openFileDirectory(self):
+		self.directoryChosen = filedialog.askdirectory()
+		self.setDirectoryTextBox(self.directoryChosen)
+		return
+
+	def setDirectoryTextBox(self, directory):
+		self.filePathTextBox.config(state='normal')
+		self.filePathTextBox.delete(0, END)
+		self.filePathTextBox.insert(0, directory)
+		self.filePathTextBox.config(state='disabled')
+		return
+
+	def createFileDirectoryFrame(self):
+		fileDirectoryFrame = LabelFrame(self.performTab, text="Choose Directory for Files", font=(self.font, 10), bd=8)
+		openFileExplorerButton = Button(fileDirectoryFrame, text="Choose...", font=(self.font, 10),
+			bg="black", fg="white", command=self.openFileDirectory)
+		self.filePathTextBox = Entry(fileDirectoryFrame, width=65, state='disabled')
+		fileDirectoryFrame.pack(fill="both", expand="no")
+		openFileExplorerButton.pack(side = LEFT, padx=5, pady= 5)
+		self.filePathTextBox.pack(side = LEFT, padx=10)
+		return
+
+	def perform(self):
+		parameters = Parameters()
+		parameters.setNumberOfTracks(int(self.numberOfTracksSpinbox.get()))
+		parameters.setMinimumLengthOfPiece((int(self.minimumMinutesSpinbox.get()) * 60) + int(self.minimumSecondsSpinbox.get()))
+		parameters.setMaximumLengthOfPiece((int(self.maximumMinutesSpinbox.get()) * 60) + int(self.maximumSecondsSpinbox.get()))
+		parameters.setMinimumLengthOfSample(int(self.minimumLengthOfSampleSpinbox.get()))
+		parameters.setMaximumLengthOfSample(int(self.maximumLengthOfSampleSpinbox.get()))
+		parameters.setMinimumTimeBetweenChecks(int(self.minimumTimeBetweenChecksSpinbox.get()))
+		parameters.setMaximumTimeBetweenChecks(int(self.maximumTimeBetweenChecksSpinbox.get()))
+		parameters.setDirectoryForFiles(self.directoryChosen)
+		parameters.setDivisionConstant(2)
+		il = ImaginaryLandscape(parameters)
+		return
+
+	def createPerformButton(self):
+		#performButtonFrame = LabelFrame(self.performTab, text="perform", bd = 8)
+		performButton = Button(self.performTab, text="Perform", font=(self.font, 10),
+			bg = "black", fg="white", height=1, width=30, command=self.perform)
+		#performButtonFrame.pack(fill="both", expand="no")
+		performButton.pack(side = TOP)
+		return
+
+############################################################################################################################
+#put in README for divisionConstant:
 #Ex: with 2, we start with 100, then divide it by 2, and get 50
 #for the next thread, we take that 50, and divide it by 2, and get 25
 #for the next thread, we take that 25, and divide it by 2, and get 12 (through integer division)
 #etc...
 
-#time in seconds between each check for if the program should play a thread or not
-minimumTimeBetweenChecks = 1
-maximumTimeBetweenChecks = 2
-#length of the the whole performance in seconds
-minimunLengthOfPiece = 60 * (.25)
-maximumLengthOfPiece = 60 * (.25)
-#range of length for each individual sample in seconds
-minimumLengthOfSample = 0
-maximumLengthOfSample = 15
+#parameters = Parameters(
+#	directoryForFiles,
+#	numberOfTracks, 
+#	divisionConstant, 
+#	minimumTimeBetweenChecks,
+#	maximumTimeBetweenChecks,
+#	minimunLengthOfPiece, 
+#	maximumLengthOfPiece,
+#	minimumLengthOfSample,
+#	maximumLengthOfSample)
 
-parameters = Parameters(
-	directoryForFiles,
-	numberOfTracks, 
-	divisionConstant, 
-	minimumTimeBetweenChecks,
-	maximumTimeBetweenChecks,
-	minimunLengthOfPiece, 
-	maximumLengthOfPiece,
-	minimumLengthOfSample,
-	maximumLengthOfSample)
-
-il = ImaginaryLandscape(parameters)
-print("done")
+ui = UI()
